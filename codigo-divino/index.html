@@ -34,6 +34,120 @@ fbq('track', 'PageView');
 src="https://www.facebook.com/tr?id=893392223195819&ev=PageView&noscript=1"
 /></noscript>
 <!-- End Meta Pixel Code -->
+<!-- UTM Mapping Script -->
+<script>
+(function () {
+  if (window.__utmScriptLoaded) return;
+  window.__utmScriptLoaded = true;
+
+  var FIELDS = ["src", "sck", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
+  var STORAGE_KEY = "__utm_params";
+
+  function parseQuery(search) {
+    var params = {};
+    try {
+      if (!search) return params;
+      if (search.charAt(0) === "?") search = search.substring(1);
+      search.split("&").forEach(function(part) {
+        if (!part) return;
+        var kv = part.split("=");
+        var k = decodeURIComponent(kv[0] || "");
+        var v = decodeURIComponent(kv.slice(1).join("=") || "");
+        if (k) params[k] = v;
+      });
+    } catch (e) {}
+    return params;
+  }
+
+  function getUtmParams() {
+    var fromUrl = parseQuery(window.location.search);
+    var relevant = {};
+    var found = false;
+
+    FIELDS.forEach(function(f) {
+      if (fromUrl[f]) {
+        relevant[f] = fromUrl[f];
+        found = true;
+      }
+    });
+
+    if (found) {
+      try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(relevant)); } catch(e) {}
+      return relevant;
+    }
+
+    try {
+      var stored = sessionStorage.getItem(STORAGE_KEY);
+      if (stored) return JSON.parse(stored);
+    } catch(e) {}
+
+    return {};
+  }
+
+  function applyParamsToHref(href, params) {
+    try {
+      var url = new URL(href, window.location.href);
+      var changed = false;
+      FIELDS.forEach(function(f) {
+        if (params[f] && url.searchParams.get(f) !== params[f]) {
+          url.searchParams.set(f, params[f]);
+          changed = true;
+        }
+      });
+      return changed ? url.href : null;
+    } catch(e) {
+      return null;
+    }
+  }
+
+  function applyParams() {
+    var params = getUtmParams();
+    if (!Object.keys(params).length) return;
+
+    var links = document.getElementsByTagName("a");
+    for (var i = 0; i < links.length; i++) {
+      var link = links[i];
+      try {
+        var raw = link.getAttribute("href");
+        if (!raw) continue;
+        var lower = raw.toLowerCase();
+        if (raw.charAt(0) === "#" ||
+            lower.indexOf("mailto:") === 0 ||
+            lower.indexOf("tel:") === 0 ||
+            lower.indexOf("javascript:") === 0) continue;
+
+        var newHref = applyParamsToHref(link.href, params);
+        if (newHref) link.href = newHref;
+      } catch(e) {}
+    }
+  }
+
+  var interval = setInterval(applyParams, 500);
+  setTimeout(function() { clearInterval(interval); }, 30000);
+
+  if (typeof MutationObserver !== 'undefined' && document.body) {
+    try {
+      var observer = new MutationObserver(function(mutations) {
+        for (var i = 0; i < mutations.length; i++) {
+          if (mutations[i].addedNodes.length > 0) {
+            applyParams();
+            break;
+          }
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    } catch(e) {}
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener("DOMContentLoaded", applyParams);
+  } else {
+    applyParams();
+  }
+
+})();
+</script>
+<!-- End UTM Mapping Script -->
 </head>
 <body>
 
